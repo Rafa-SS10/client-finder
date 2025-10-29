@@ -2,22 +2,19 @@
     "version": 2,
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
-    "routes": [
+    "functions": {
+        "api/notes.mjs": {
+            "runtime": "nodejs18.x"
+        }
+    },
+    "rewrites": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
         },
         {
-            "src": "/assets/(.*)",
-            "dest": "/assets/$1"
-        },
-        {
-            "src": "/(.*\\.(js|css|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot))",
-            "dest": "/$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
+            "source": "/((?!api/).*)",
+            "destination": "/index.html"
         }
     ]
 }
