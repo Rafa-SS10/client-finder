@@ -1,11 +1,11 @@
-// Vercel Serverless Function - Notes storage via Vercel KV (Upstash Redis)
-// Requires environment variables configured in Vercel:
-//  - KV_URL
+// Vercel Serverless Function (ESM) - Notes storage via Vercel KV
+// Env vars (configure in Vercel project):
 //  - KV_REST_API_URL
 //  - KV_REST_API_TOKEN
+//  - KV_URL (optional)
 //  - KV_REST_API_READ_ONLY_TOKEN (optional)
 
-const { kv } = require('@vercel/kv');
+import { kv } from '@vercel/kv';
 
 function json(res, status, data) {
     res.statusCode = status;
@@ -16,7 +16,7 @@ function json(res, status, data) {
     res.end(JSON.stringify(data));
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return json(res, 200, {});
 
     try {
@@ -65,6 +65,6 @@ module.exports = async function handler(req, res) {
     } catch (e) {
         return json(res, 500, { error: e.message || String(e) });
     }
-};
+}
 
 
