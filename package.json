@@ -1,0 +1,28 @@
+{
+    "name": "client-finder-ui",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc -b && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@googlemaps/js-api-loader": "^1.16.8",
+        "@vercel/kv": "^2.0.0",
+        "jspdf": "^2.5.1",
+        "jspdf-autotable": "^3.8.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-router-dom": "^6.26.2"
+    },
+    "devDependencies": {
+        "@types/google.maps": "^3.58.1",
+        "@types/react": "^18.3.8",
+        "@types/react-dom": "^18.3.0",
+        "@vitejs/plugin-react": "^4.3.2",
+        "typescript": "^5.6.3",
+        "vite": "^5.4.8"
+    }
+}
