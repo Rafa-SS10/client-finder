@@ -5,14 +5,17 @@
             "runtime": "nodejs18.x"
         }
     },
-    "rewrites": [
+    "routes": [
         {
-            "source": "/api/(.*)",
-            "destination": "/api/$1"
+            "handle": "filesystem"
         },
         {
-            "source": "/((?!api/).*)",
-            "destination": "/index.html"
+            "src": "/api/(.*)",
+            "dest": "/api/$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }
