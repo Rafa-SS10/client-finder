@@ -1,4 +1,6 @@
 export const config = { runtime: 'edge' };
+// TS in Edge runtime: declare minimal process typing
+declare const process: any;
 
 type NoteRecord = {
     placeId: string;
