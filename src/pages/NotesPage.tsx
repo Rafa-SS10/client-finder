@@ -224,7 +224,11 @@ export function NotesPage() {
             <div className="card" style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ margin: 0 }}>Notes</h2>
-                    <Link className="ghost" to="/">← Back to search</Link>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button className="ghost" onClick={() => exportCsv(filtered)}>Export CSV</button>
+                        <button className="ghost" onClick={() => exportPdf(filtered)}>Export PDF</button>
+                        <Link className="ghost" to="/">← Back to search</Link>
+                    </div>
                 </div>
                 <div className="controls" style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div className="field">
@@ -338,6 +342,58 @@ export function NotesPage() {
             </div>
         </div>
     );
+}
+
+function exportCsv(list: NoteRecord[]) {
+    const headers = ['Place ID', 'Name', 'Address', 'Status', 'Updated', 'Note'];
+    const rows = list.map(n => [
+        safe(n.placeId),
+        safe(n.name),
+        safe(n.address),
+        safe(n.status || 'new'),
+        safe(n.updatedAt ? new Date(n.updatedAt).toISOString() : ''),
+        safe(n.note),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'notes.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportPdf(list: NoteRecord[]) {
+    // Lazy import to keep initial bundle smaller
+    import('jspdf').then(({ default: jsPDF }) => {
+        import('jspdf-autotable').then((mod) => {
+            const autoTable = (mod as any).default || (mod as any);
+            const doc = new jsPDF({ orientation: 'landscape' });
+            doc.text('Client Finder - Notes', 14, 14);
+            autoTable(doc, {
+                head: [['Place ID', 'Name', 'Address', 'Status', 'Updated', 'Note']],
+                body: list.map(n => [
+                    n.placeId,
+                    n.name || '',
+                    n.address || '',
+                    n.status || 'new',
+                    n.updatedAt ? new Date(n.updatedAt).toLocaleString() : '',
+                    (n.note || '').slice(0, 120),
+                ]),
+                styles: { fontSize: 8 },
+                startY: 20,
+                columnStyles: { 5: { cellWidth: 100 } },
+            });
+            doc.save('notes.pdf');
+        });
+    });
+}
+
+function safe(v?: string) {
+    const s = (v ?? '').toString();
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
 }
 
 

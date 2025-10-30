@@ -25,26 +25,38 @@ export function ResultsTable({ results }: ResultsTableProps) {
 
     // Check for notes whenever results change
     useEffect(() => {
+        let stopped = false;
+
+        async function refreshFromServer() {
+            try {
+                const res = await fetch('/api/notes');
+                if (!res.ok) return;
+                const list: Array<{ placeId: string }> = await res.json();
+                if (stopped) return;
+                const set: Record<string, boolean> = {};
+                list.forEach((n) => { if (n.placeId) set[n.placeId] = true; });
+                setNotesMap(set);
+            } catch {
+                // ignore
+            }
+        }
+
         const updateNotesMap = () => {
-            const map: Record<string, boolean> = {};
-            results.forEach((r) => {
-                map[r.id] = hasNote(r.id);
-            });
-            setNotesMap(map);
+            // In dev, use localStorage; in prod, fetch from server
+            if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+                const map: Record<string, boolean> = {};
+                results.forEach((r) => { map[r.id] = hasNote(r.id); });
+                setNotesMap(map);
+            } else {
+                refreshFromServer();
+            }
         };
 
         updateNotesMap();
 
-        // Listen for storage changes (when notes are saved/deleted)
         window.addEventListener('storage', updateNotesMap);
-
-        // Also check periodically (for same-tab updates)
-        const interval = setInterval(updateNotesMap, 1000);
-
-        return () => {
-            window.removeEventListener('storage', updateNotesMap);
-            clearInterval(interval);
-        };
+        const interval = setInterval(updateNotesMap, 5000);
+        return () => { stopped = true; window.removeEventListener('storage', updateNotesMap); clearInterval(interval); };
     }, [results]);
 
     const sorted = useMemo(() => {
