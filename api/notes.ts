@@ -21,19 +21,21 @@ function json(status: number, data: unknown) {
     });
 }
 
-async function kvFetch(path: string, init?: RequestInit) {
-    const base = process.env.KV_REST_API_URL as string;
-    const token = process.env.KV_REST_API_TOKEN as string;
-    if (!base || !token) {
-        throw new Error('KV env vars missing');
-    }
-    const res = await fetch(base + path, {
-        ...init,
-        headers: {
-            authorization: `Bearer ${token}`,
-            'content-type': 'application/json',
-            ...(init?.headers || {}),
-        },
+function join(...parts: string[]) {
+    return parts
+        .filter(Boolean)
+        .map((p, i) => (i === 0 ? p.replace(/\/$/, '') : p.replace(/^\//, '')))
+        .join('/');
+}
+
+async function kvCommand(path: string, method: 'GET' | 'POST' = 'GET') {
+    const base = (process.env as any).KV_REST_API_URL as string;
+    const token = (process.env as any).KV_REST_API_TOKEN as string;
+    if (!base || !token) throw new Error('KV env vars missing');
+    const url = join(base, path);
+    const res = await fetch(url, {
+        method,
+        headers: { authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
@@ -46,18 +48,20 @@ export default async function handler(req: Request) {
         if (req.method === 'GET') {
             const placeId = url.searchParams.get('placeId');
             if (placeId) {
-                const r = await kvFetch(`/get/note:${encodeURIComponent(placeId)}`);
-                return json(200, r?.result || {});
+                const r = await kvCommand(`get/${encodeURIComponent('note:' + placeId)}`);
+                return json(200, r?.result ? JSON.parse(r.result) : {});
             }
-            const ids = await kvFetch('/smembers/notes:index');
+            const ids = await kvCommand('smembers/notes:index');
             const members: string[] = ids?.result || [];
             if (members.length === 0) return json(200, []);
-            const keys = members.map((id) => `note:${id}`);
-            const mget = await kvFetch('/mget', {
-                method: 'POST',
-                body: JSON.stringify(keys),
-            });
-            const list = (mget?.result || []).filter(Boolean);
+            const keysPath = members.map((id) => encodeURIComponent('note:' + id)).join('/');
+            const mget = await kvCommand(`mget/${keysPath}`);
+            const list = (mget?.result || [])
+                .filter(Boolean)
+                .map((s: string) => {
+                    try { return JSON.parse(s); } catch { return null; }
+                })
+                .filter(Boolean);
             return json(200, list);
         }
 
@@ -72,25 +76,17 @@ export default async function handler(req: Request) {
                 status: (body.status as any) || 'new',
                 updatedAt: new Date().toISOString(),
             };
-            await kvFetch(`/set/note:${encodeURIComponent(record.placeId)}`, {
-                method: 'POST',
-                body: JSON.stringify(record),
-            });
-            await kvFetch('/sadd/notes:index', {
-                method: 'POST',
-                body: JSON.stringify([record.placeId]),
-            });
+            const value = encodeURIComponent(JSON.stringify(record));
+            await kvCommand(`set/${encodeURIComponent('note:' + record.placeId)}/${value}`);
+            await kvCommand(`sadd/notes:index/${encodeURIComponent(record.placeId)}`);
             return json(200, record);
         }
 
         if (req.method === 'DELETE') {
             const placeId = url.searchParams.get('placeId');
             if (!placeId) return json(400, { error: 'placeId is required' });
-            await kvFetch(`/del/note:${encodeURIComponent(placeId)}`);
-            await kvFetch('/srem/notes:index', {
-                method: 'POST',
-                body: JSON.stringify([placeId]),
-            });
+            await kvCommand(`del/${encodeURIComponent('note:' + placeId)}`);
+            await kvCommand(`srem/notes:index/${encodeURIComponent(placeId)}`);
             return json(200, { ok: true });
         }
 
